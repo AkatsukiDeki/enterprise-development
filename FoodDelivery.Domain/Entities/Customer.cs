@@ -19,11 +19,11 @@ public sealed class Customer
     /// Имя клиента.
     /// </summary>
     public required string FirstName { get; set; }
-    
-	/// <summary>
-    /// Отчество клиента.(если есть)
+
+    /// <summary>
+    /// Отчество клиента (при наличии).
     /// </summary>
-	public string? Patronymic { get; set; }
+    public string? Patronymic { get; set; }
 
     /// <summary>
     /// Контактный номер телефона.
@@ -36,9 +36,9 @@ public sealed class Customer
     public required string DeliveryAddress { get; set; }
 
     /// <summary>
-    /// Полное имя клиента для отображения и сортировки.
+    /// Полное имя клиента для отображения.
     /// </summary>
-    public string FullName =>string.IsNullOrWhiteSpace(Patronymic)
+    public string FullName => string.IsNullOrWhiteSpace(Patronymic)
         ? $"{LastName} {FirstName}"
-        : $"{LastName} {FirstName} {Patronymic}";                           
+        : $"{LastName} {FirstName} {Patronymic}";
 }

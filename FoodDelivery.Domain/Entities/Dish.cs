@@ -16,6 +16,11 @@ public sealed class Dish
     public required string Name { get; set; }
 
     /// <summary>
+    /// Описание блюда и состава.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Вес блюда в граммах.
     /// </summary>
     public required int WeightGrams { get; set; }
@@ -24,14 +29,14 @@ public sealed class Dish
     /// Цена блюда в рублях.
     /// </summary>
     public required decimal Price { get; set; }
-    
+
     /// <summary>
-    /// Навигационное свойство категории блюда.
+    /// Категория блюда.
     /// </summary>
     public required Category Category { get; set; }
-    
+
     /// <summary>
-    /// Навигационное свойство ресторана.
+    /// Ресторан, к которому относится блюдо.
     /// </summary>
     public required Restaurant Restaurant { get; set; }
 }

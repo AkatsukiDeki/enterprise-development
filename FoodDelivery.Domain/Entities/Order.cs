@@ -5,20 +5,20 @@ namespace FoodDelivery.Domain.Entities;
 /// </summary>
 public sealed class Order
 {
-	private List<OrderItem> _items = [];
+    private List<OrderItem> _items = [];
 
     /// <summary>
     /// Уникальный идентификатор заказа.
     /// </summary>
     public required int Id { get; set; }
-    
+
     /// <summary>
-    /// Навигационное свойство клиента.
+    /// Клиент, оформивший заказ.
     /// </summary>
     public required Customer Customer { get; set; }
 
     /// <summary>
-    /// Навигационное свойство ресторана.
+    /// Ресторан, в котором сделан заказ.
     /// </summary>
     public required Restaurant Restaurant { get; set; }
 
@@ -28,12 +28,12 @@ public sealed class Order
     public required DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Время фактической доставки заказа.
+    /// Время фактической доставки заказа. Может быть null, если заказ еще выполняется.
     /// </summary>
-    public required DateTime DeliveredAt { get; set; }
+    public DateTime? DeliveredAt { get; set; }
 
     /// <summary>
-    /// Состав позиций заказа. Все блюда должны принадлежать ресторану заказа
+    /// Состав позиций заказа. Все блюда должны принадлежать ресторану заказа.
     /// </summary>
     public required List<OrderItem> Items
     {
@@ -54,7 +54,7 @@ public sealed class Order
     public decimal TotalAmount => Items.Sum(i => i.SubTotal);
 
     /// <summary>
-    /// Длительность доставки.
+    /// Длительность доставки. Возвращает null, если заказ еще не доставлен.
     /// </summary>
-    public TimeSpan DeliveryDuration => DeliveredAt - CreatedAt;
+    public TimeSpan? DeliveryDuration => DeliveredAt.HasValue ? DeliveredAt.Value - CreatedAt : null;
 }

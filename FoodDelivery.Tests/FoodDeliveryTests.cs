@@ -24,8 +24,11 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     [Fact]
     public void Top5RestaurantsByOrderCount()
     {
+        // Arrange
         var orders = _data.Orders;
+        int[] expectedTop5Ids = [2, 4, 7, 1, 8];
 
+        // Act
         var actualTop5Ids = orders
             .CountBy(order => order.Restaurant.Id)
             .OrderByDescending(pair => pair.Value)
@@ -34,9 +37,8 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
             .Select(pair => pair.Key)
             .ToArray();
 
-        int[] expected = [2, 4, 7, 1, 8];
-
-        Assert.Equal(expected, actualTop5Ids);
+        // Assert
+        Assert.Equal(expectedTop5Ids, actualTop5Ids);
     }
 
     /// <summary>
@@ -45,92 +47,116 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     [Fact]
     public void OrdersWithMinDeliveryDuration()
     {
-        var orders = _data.Orders;
-        var minDuration = orders.Min(o => o.DeliveryDuration);
+        // Arrange
+        var deliveredOrders = _data.Orders.Where(o => o.DeliveryDuration.HasValue).ToList();
+        var expectedMinDuration = TimeSpan.FromMinutes(15);
+        var expectedOrderId = 11;
 
-        var fastestOrders = orders
+        // Act
+        var minDuration = deliveredOrders.Min(o => o.DeliveryDuration!.Value);
+        var fastestOrders = deliveredOrders
             .Where(o => o.DeliveryDuration == minDuration)
             .ToList();
 
+        // Assert
         Assert.Single(fastestOrders);
-        Assert.Equal(11, fastestOrders[0].Id);
-        Assert.Equal(TimeSpan.FromMinutes(15), minDuration);
+        Assert.Equal(expectedOrderId, fastestOrders[0].Id);
+        Assert.Equal(expectedMinDuration, minDuration);
     }
 
     /// <summary>
-    /// Проверка: Вывести сведения обо всех клиентах, заказывавших в выбранном ресторане, упорядочить по ФИО.
+    /// Проверка: Вывести идентификаторы клиентов, заказывавших в выбранном ресторане, упорядоченные по ФИО.
     /// </summary>
     [Fact]
     public void CustomersByRestaurantOrderedByName()
     {
+        // Arrange
         var orders = _data.Orders;
         var targetRestaurantId = 2;
+        int[] expectedCustomerIds = [1, 3, 4];
 
-        var customers = orders
+        // Act
+        var actualCustomerIds = orders
             .Where(o => o.Restaurant.Id == targetRestaurantId)
             .Select(o => o.Customer)
             .DistinctBy(c => c.Id)
             .OrderBy(c => c.FullName)
-            .ToList();
+            .Select(c => c.Id)
+            .ToArray();
 
-        var actualNames = customers.Select(c => c.FullName).ToArray();
-        string[] expectedNames =
-        [
-            "Иванов Иван Иванович",
-            "Сидоров Алексей Михайлович",
-            "Смирнов Дмитрий Александрович"
-        ];
-
-        Assert.Equal(expectedNames, actualNames);
+        // Assert
+        Assert.Equal(expectedCustomerIds, actualCustomerIds);
     }
 
     /// <summary>
     /// Проверка: Вывести сводную информацию о заказах по указанной категории блюд за выбранный период.
+    /// Сумма считается строго по позициям блюд целевой категории.
     /// </summary>
     /// <param name="categoryId">Идентификатор категории блюд.</param>
-    /// <param name="expectedOrdersCount">Ожидаемое количество заказов.</param>
-    /// <param name="expectedTotalAmount">Ожидаемая суммарная стоимость заказов.</param>
+    /// <param name="expectedOrdersCount">Ожидаемое количество заказов с блюдами категории.</param>
+    /// <param name="expectedTotalAmount">Ожидаемая сумма продаж блюд данной категории.</param>
+    /// <param name="expectedAverageAmount">Ожидаемый средний чек позиции данной категории в заказе.</param>
     [Theory]
-    [InlineData(1, 2, 1650.0)]
-    [InlineData(2, 4, 4340.0)]
-    [InlineData(10, 3, 5800.0)]
-    public void OrdersSummaryByCategoryForSelectedPeriod(int categoryId, int expectedOrdersCount, decimal expectedTotalAmount)
+    [InlineData(1, 2, 1100.0, 550.0)]    // Пицца: Заказ 11 (550) + Заказ 12 (550)
+    [InlineData(2, 4, 4720.0, 1180.0)]   // Суши: Заказы 4 (1240), 5 (620), 6 (1780), 7 (1080)
+    [InlineData(10, 3, 5630.0, 1876.67)] // Гриль: Заказы 1 (3220), 2 (1450), 3 (960)
+    public void OrdersSummaryByCategoryForSelectedPeriod(
+        int categoryId,
+        int expectedOrdersCount,
+        decimal expectedTotalAmount,
+        decimal expectedAverageAmount)
     {
+        // Arrange
         var orders = _data.Orders;
         var periodStart = new DateTime(2026, 9, 1);
         var periodEnd = new DateTime(2026, 9, 30);
 
+        // Act
         var categoryOrders = orders
             .Where(o => o.CreatedAt >= periodStart && o.CreatedAt <= periodEnd)
             .Where(o => o.Items.Any(item => item.Dish.Category.Id == categoryId))
             .ToList();
 
         var ordersCount = categoryOrders.Count;
-        var totalAmount = categoryOrders.Sum(o => o.TotalAmount);
-        var averageAmount = ordersCount > 0 ? totalAmount / ordersCount : 0m;
 
+        var totalAmount = categoryOrders
+            .SelectMany(o => o.Items)
+            .Where(item => item.Dish.Category.Id == categoryId)
+            .Sum(item => item.SubTotal);
+
+        var averageAmount = ordersCount > 0 ? Math.Round(totalAmount / ordersCount, 2) : 0m;
+
+        // Assert
         Assert.Equal(expectedOrdersCount, ordersCount);
         Assert.Equal(expectedTotalAmount, totalAmount);
-        Assert.True(averageAmount > 0);
+        Assert.Equal(expectedAverageAmount, averageAmount);
     }
 
     /// <summary>
     /// Проверка: Вывести информацию о клиенте, который потратил наибольшую сумму за все время.
+    /// Группировка выполняется по первичному ключу Customer.Id.
     /// </summary>
     [Fact]
     public void TopSpendingCustomer()
     {
+        // Arrange
         var orders = _data.Orders;
+        var expectedCustomerId = 1;
 
-        var topCustomer = orders
-            .GroupBy(o => o.Customer)
-            .Select(g => new { Customer = g.Key, TotalSpent = g.Sum(o => o.TotalAmount) })
+        // Act
+        var topCustomerId = orders
+            .GroupBy(o => o.Customer.Id)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                TotalSpent = g.Sum(o => o.TotalAmount)
+            })
             .OrderByDescending(x => x.TotalSpent)
             .First()
-            .Customer;
+            .CustomerId;
 
-        Assert.Equal(1, topCustomer.Id);
-        Assert.Equal("Иванов Иван Иванович", topCustomer.FullName);
+        // Assert
+        Assert.Equal(expectedCustomerId, topCustomerId);
     }
 
     /// <summary>
@@ -139,9 +165,11 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     [Fact]
     public void OrderCannotContainDishesFromDifferentRestaurant()
     {
+        // Arrange
         var dodoPizza = _data.Dishes[0];
         var tanukiRestaurant = _data.Restaurants[1];
 
+        // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
         {
             _ = new Domain.Entities.Order
