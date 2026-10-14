@@ -5,25 +5,17 @@ namespace FoodDelivery.Domain.Entities;
 /// </summary>
 public sealed class Order
 {
+	private List<OrderItem> _items = [];
+
     /// <summary>
     /// Уникальный идентификатор заказа.
     /// </summary>
     public required int Id { get; set; }
-
-    /// <summary>
-    /// Идентификатор клиента.
-    /// </summary>
-    public required int CustomerId { get; set; }
-
+    
     /// <summary>
     /// Навигационное свойство клиента.
     /// </summary>
     public required Customer Customer { get; set; }
-
-    /// <summary>
-    /// Идентификатор ресторана.
-    /// </summary>
-    public required int RestaurantId { get; set; }
 
     /// <summary>
     /// Навигационное свойство ресторана.
@@ -41,9 +33,20 @@ public sealed class Order
     public required DateTime DeliveredAt { get; set; }
 
     /// <summary>
-    /// Состав позиций заказа.
+    /// Состав позиций заказа. Все блюда должны принадлежать ресторану заказа
     /// </summary>
-    public required List<OrderItem> Items { get; set; }
+    public required List<OrderItem> Items
+    {
+        get => _items;
+        set
+        {
+            if (value.Any(item => item.Dish.Restaurant.Id != Restaurant.Id))
+            {
+                throw new InvalidOperationException("Заказ не может содержать блюда из другого ресторана.");
+            }
+            _items = value;
+        }
+    }
 
     /// <summary>
     /// Вычисляемая итоговая сумма заказа.

@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-      - master
       - lab1
       - lab1-classes
   pull_request:
     branches:
       - main
-      - master
 
 jobs:
   test:

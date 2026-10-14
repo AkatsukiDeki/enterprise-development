@@ -24,22 +24,12 @@ public sealed class Dish
     /// Цена блюда в рублях.
     /// </summary>
     public required decimal Price { get; set; }
-
-    /// <summary>
-    /// Идентификатор категории блюда.
-    /// </summary>
-    public required int CategoryId { get; set; }
-
+    
     /// <summary>
     /// Навигационное свойство категории блюда.
     /// </summary>
     public required Category Category { get; set; }
-
-    /// <summary>
-    /// Идентификатор ресторана, к которому относится блюдо.
-    /// </summary>
-    public required int RestaurantId { get; set; }
-
+    
     /// <summary>
     /// Навигационное свойство ресторана.
     /// </summary>

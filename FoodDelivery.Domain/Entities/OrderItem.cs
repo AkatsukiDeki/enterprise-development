@@ -9,12 +9,7 @@ public sealed class OrderItem
     /// Уникальный идентификатор позиции.
     /// </summary>
     public required int Id { get; set; }
-
-    /// <summary>
-    /// Идентификатор заказанного блюда.
-    /// </summary>
-    public required int DishId { get; set; }
-
+    
     /// <summary>
     /// Заказанное блюдо.
     /// </summary>
