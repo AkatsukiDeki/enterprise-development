@@ -26,7 +26,8 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     {
         // Arrange
         var orders = _data.Orders;
-        int[] expectedTop5Ids = [2, 4, 7, 1, 8];
+        // Заказы: Тануки (Id 2) - 4, Перчини (Id 4) - 3, МясоRoob (Id 7) - 3, Додо (Id 1) - 3, Шоколадница (Id 8) - 2
+        int[] expectedTop5Ids = [2, 1, 4, 7, 8];
 
         // Act
         var actualTop5Ids = orders
@@ -72,7 +73,7 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     {
         // Arrange
         var orders = _data.Orders;
-        var targetRestaurantId = 2;
+        var targetRestaurantId = 2; // Тануки
         int[] expectedCustomerIds = [1, 3, 4];
 
         // Act
@@ -90,15 +91,15 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
 
     /// <summary>
     /// Проверка: Вывести сводную информацию о заказах по указанной категории блюд за выбранный период.
-    /// Сумма считается строго по позициям блюд целевой категории.
     /// </summary>
     /// <param name="categoryId">Идентификатор категории блюд.</param>
     /// <param name="expectedOrdersCount">Ожидаемое количество заказов с блюдами категории.</param>
     /// <param name="expectedTotalAmount">Ожидаемая сумма продаж блюд данной категории.</param>
     /// <param name="expectedAverageAmount">Ожидаемый средний чек позиции данной категории в заказе.</param>
     [Theory]
-    [InlineData(1, 2, 1100.0, 550.0)]    // Пицца: Заказ 11 (550) + Заказ 12 (550)
-    [InlineData(2, 4, 4720.0, 1180.0)]   // Суши: Заказы 4 (1240), 5 (620), 6 (1780), 7 (1080)
+    [InlineData(1, 3, 1790.0, 596.67)]   // Пицца: Заказ 11 (550), Заказ 12 (550), Заказ 19 (690)
+    [InlineData(2, 5, 5640.0, 1128.0)]   // Суши: Заказы 4 (1240), 5 (620), 6 (1780), 7 (1080), 17 (920)
+    [InlineData(9, 2, 830.0, 415.0)]     // Завтраки: Заказ 13 (520), Заказ 14 (310)
     [InlineData(10, 3, 5630.0, 1876.67)] // Гриль: Заказы 1 (3220), 2 (1450), 3 (960)
     public void OrdersSummaryByCategoryForSelectedPeriod(
         int categoryId,
@@ -108,8 +109,8 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
     {
         // Arrange
         var orders = _data.Orders;
-        var periodStart = new DateTime(2026, 9, 1);
-        var periodEnd = new DateTime(2026, 9, 30);
+        var periodStart = new DateTime(2026, 9, 1, 0, 0, 0);
+        var periodEnd = new DateTime(2026, 9, 30, 23, 59, 59);
 
         // Act
         var categoryOrders = orders
@@ -134,7 +135,6 @@ public sealed class FoodDeliveryTests : IClassFixture<TestData>
 
     /// <summary>
     /// Проверка: Вывести информацию о клиенте, который потратил наибольшую сумму за все время.
-    /// Группировка выполняется по первичному ключу Customer.Id.
     /// </summary>
     [Fact]
     public void TopSpendingCustomer()
