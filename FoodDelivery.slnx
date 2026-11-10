@@ -1,4 +1,8 @@
 <Solution>
+  <Project Path="FoodDelivery.AppHost/FoodDelivery.AppHost.csproj" />
+  <Project Path="FoodDelivery.DataGenerator/FoodDelivery.DataGenerator.csproj" />
   <Project Path="FoodDelivery.Domain/FoodDelivery.Domain.csproj" />
+  <Project Path="FoodDelivery.Server/FoodDelivery.Server.csproj" />
+  <Project Path="FoodDelivery.ServiceDefaults/FoodDelivery.ServiceDefaults.csproj" />
   <Project Path="FoodDelivery.Tests/FoodDelivery.Tests.csproj" />
 </Solution>
