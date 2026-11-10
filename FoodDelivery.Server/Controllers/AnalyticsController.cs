@@ -1,4 +1,4 @@
-using FoodDelivery.Server.Data;
+﻿using FoodDelivery.Server.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,14 +40,15 @@ public class AnalyticsController : ControllerBase
     /// 2. Идентификаторы заказов с минимальным временем доставки.
     /// </summary>
     [HttpGet("fastest-orders")]
-    public async Task<ActionResult> GetOrdersWithMinDeliveryDuration(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<int>>> GetOrdersWithMinDeliveryDuration(CancellationToken ct)
     {
         var deliveredOrders = await _db.Orders
             .Where(o => o.DeliveredAt.HasValue)
             .Select(o => new
             {
                 o.Id,
-                DurationMinutes = EF.Functions.DateDiffMinute(o.CreatedAt, o.DeliveredAt!.Value)
+                o.CreatedAt,
+                DeliveredAt = o.DeliveredAt!.Value
             })
             .ToListAsync(ct);
 
@@ -56,8 +57,11 @@ public class AnalyticsController : ControllerBase
             return NotFound("Доставленные заказы отсутствуют.");
         }
 
-        var minDuration = deliveredOrders.Min(o => o.DurationMinutes);
-        var result = deliveredOrders.Where(o => o.DurationMinutes == minDuration).Select(o => o.Id);
+        var minDuration = deliveredOrders.Min(o => (o.DeliveredAt - o.CreatedAt).TotalMinutes);
+        var result = deliveredOrders
+            .Where(o => (o.DeliveredAt - o.CreatedAt).TotalMinutes == minDuration)
+            .Select(o => o.Id)
+            .ToList();
 
         return Ok(result);
     }
@@ -91,18 +95,22 @@ public class AnalyticsController : ControllerBase
         [FromQuery] DateTime periodEnd,
         CancellationToken ct)
     {
-        var categoryOrders = await _db.Orders
+        var matchingOrders = await _db.Orders
             .Where(o => o.CreatedAt >= periodStart && o.CreatedAt <= periodEnd)
-            .Where(o => o.Items.Any(item => item.Dish.Category.Id == categoryId))
             .Include(o => o.Items)
                 .ThenInclude(i => i.Dish)
+                    .ThenInclude(d => d.Category)
             .ToListAsync(ct);
 
-        var ordersCount = categoryOrders.Count;
-        var totalAmount = categoryOrders
+        var filteredOrders = matchingOrders
+            .Where(o => o.Items.Any(i => i.Dish?.Category?.Id == categoryId))
+            .ToList();
+
+        var ordersCount = filteredOrders.Count;
+        var totalAmount = filteredOrders
             .SelectMany(o => o.Items)
-            .Where(i => i.Dish.Category.Id == categoryId)
-            .Sum(i => i.Quantity * i.Dish.Price);
+            .Where(i => i.Dish?.Category?.Id == categoryId)
+            .Sum(i => i.Quantity * (i.Dish?.Price ?? 0m));
 
         var averageAmount = ordersCount > 0 ? Math.Round(totalAmount / ordersCount, 2) : 0m;
 
