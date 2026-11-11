@@ -2,6 +2,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using FoodDelivery.Domain.Messages;
 using FoodDelivery.Server.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FoodDelivery.Server.Services;
 
@@ -27,6 +28,18 @@ public class KafkaDataConsumerService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Yield();
+
+        // Первичная инициализация схемы БД до входа в цикл обработки сообщений
+        try
+        {
+            using var initScope = _serviceProvider.CreateScope();
+            var initDb = initScope.ServiceProvider.GetRequiredService<FoodDeliveryDbContext>();
+            await initDb.Database.EnsureCreatedAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при первичной инициализации базы данных перед стартом Kafka-консьюмера.");
+        }
 
         var kafkaBootstrap = _configuration.GetConnectionString("kafka") ?? "localhost:9092";
         var consumerConfig = new ConsumerConfig
@@ -61,41 +74,43 @@ public class KafkaDataConsumerService : BackgroundService
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FoodDeliveryDbContext>();
 
-                    await db.Database.EnsureCreatedAsync(stoppingToken);
-
                     // Синхронизируем справочники и сущности при их отсутствии
-                    if (!db.Categories.Any())
+                    if (payload.Categories?.Count > 0 && !await db.Categories.AnyAsync(stoppingToken))
                     {
-                        db.Categories.AddRange(payload.Categories);
+                        await db.Categories.AddRangeAsync(payload.Categories, stoppingToken);
                         await db.SaveChangesAsync(stoppingToken);
                     }
 
-                    if (!db.Restaurants.Any())
+                    if (payload.Restaurants?.Count > 0 && !await db.Restaurants.AnyAsync(stoppingToken))
                     {
-                        db.Restaurants.AddRange(payload.Restaurants);
+                        await db.Restaurants.AddRangeAsync(payload.Restaurants, stoppingToken);
                         await db.SaveChangesAsync(stoppingToken);
                     }
 
-                    if (!db.Customers.Any())
+                    if (payload.Customers?.Count > 0 && !await db.Customers.AnyAsync(stoppingToken))
                     {
-                        db.Customers.AddRange(payload.Customers);
+                        await db.Customers.AddRangeAsync(payload.Customers, stoppingToken);
                         await db.SaveChangesAsync(stoppingToken);
                     }
 
-                    if (!db.Dishes.Any())
+                    if (payload.Dishes?.Count > 0 && !await db.Dishes.AnyAsync(stoppingToken))
                     {
-                        db.Dishes.AddRange(payload.Dishes);
+                        await db.Dishes.AddRangeAsync(payload.Dishes, stoppingToken);
                         await db.SaveChangesAsync(stoppingToken);
                     }
 
-                    if (!db.Orders.Any())
+                    if (payload.Orders?.Count > 0 && !await db.Orders.AnyAsync(stoppingToken))
                     {
-                        db.Orders.AddRange(payload.Orders);
+                        await db.Orders.AddRangeAsync(payload.Orders, stoppingToken);
                         await db.SaveChangesAsync(stoppingToken);
                     }
 
                     _logger.LogInformation("Успешно синхронизированы данные из Kafka в MS SQL Server.");
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
