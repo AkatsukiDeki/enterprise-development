@@ -84,14 +84,29 @@ public class ApiIntegrationTests : IClassFixture<CustomWebApplicationFactory>
     public async Task GetCategorySummary_WithDateBounds_FiltersCorrectly()
     {
         var ct = TestContext.Current.CancellationToken;
-        var url = "/api/analytics/category-summary?categoryId=1&periodStart=2026-09-01T00:00:00&periodEnd=2026-09-30T23:59:59";
-        var response = await _client.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
 
-        var summary = await response.Content.ReadFromJsonAsync<CategorySummaryDto>(cancellationToken: ct);
-        Assert.NotNull(summary);
-        Assert.Equal(1, summary.CategoryId);
-        Assert.True(summary.OrdersCount > 0);
-        Assert.True(summary.TotalAmount > 0);
+        // 1. Запрос за весь период (сентябрь)
+        var fullUrl = "/api/analytics/category-summary?categoryId=1&periodStart=2026-09-01T00:00:00&periodEnd=2026-09-30T23:59:59";
+        var fullResponse = await _client.GetAsync(fullUrl, ct);
+        fullResponse.EnsureSuccessStatusCode();
+
+        var fullSummary = await fullResponse.Content.ReadFromJsonAsync<CategorySummaryDto>(cancellationToken: ct);
+        Assert.NotNull(fullSummary);
+        Assert.True(fullSummary.OrdersCount > 0);
+
+        // 2. Запрос за узкий диапазон, отсекающий часть заказов по дате
+        var boundedUrl = "/api/analytics/category-summary?categoryId=1&periodStart=2026-09-05T00:00:00&periodEnd=2026-09-15T23:59:59";
+        var boundedResponse = await _client.GetAsync(boundedUrl, ct);
+        boundedResponse.EnsureSuccessStatusCode();
+
+        var boundedSummary = await boundedResponse.Content.ReadFromJsonAsync<CategorySummaryDto>(cancellationToken: ct);
+        Assert.NotNull(boundedSummary);
+        Assert.Equal(1, boundedSummary.CategoryId);
+        Assert.True(boundedSummary.OrdersCount > 0);
+
+        // Проверка отсечения: количество заказов и сумма в узком диапазоне строго меньше полного месяца
+        Assert.True(boundedSummary.OrdersCount < fullSummary.OrdersCount,
+            $"Ожидалось отсечение части заказов. За период: {boundedSummary.OrdersCount}, всего: {fullSummary.OrdersCount}");
+        Assert.True(boundedSummary.TotalAmount < fullSummary.TotalAmount);
     }
 }
