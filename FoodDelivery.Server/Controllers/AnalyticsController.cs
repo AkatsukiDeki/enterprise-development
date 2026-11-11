@@ -38,17 +38,17 @@ public class AnalyticsController : ControllerBase
 
     /// <summary>
     /// 2. Идентификаторы заказов с минимальным временем доставки.
+    /// Выбирает только Id и интервал дат, совместим с InMemory и MSSQL.
     /// </summary>
     [HttpGet("fastest-orders")]
     public async Task<ActionResult<IEnumerable<int>>> GetOrdersWithMinDeliveryDuration(CancellationToken ct)
     {
         var deliveredOrders = await _db.Orders
-            .Where(o => o.DeliveredAt.HasValue)
+            .Where(o => o.DeliveredAt != null)
             .Select(o => new
             {
                 o.Id,
-                o.CreatedAt,
-                DeliveredAt = o.DeliveredAt!.Value
+                Duration = o.DeliveredAt!.Value - o.CreatedAt
             })
             .ToListAsync(ct);
 
@@ -57,9 +57,10 @@ public class AnalyticsController : ControllerBase
             return NotFound("Доставленные заказы отсутствуют.");
         }
 
-        var minDuration = deliveredOrders.Min(o => (o.DeliveredAt - o.CreatedAt).TotalMinutes);
+        var minDuration = deliveredOrders.Min(o => o.Duration);
+
         var result = deliveredOrders
-            .Where(o => (o.DeliveredAt - o.CreatedAt).TotalMinutes == minDuration)
+            .Where(o => o.Duration == minDuration)
             .Select(o => o.Id)
             .ToList();
 
@@ -86,7 +87,7 @@ public class AnalyticsController : ControllerBase
     }
 
     /// <summary>
-    /// 4. Сводная информация по категории блюд за указанный период времени (с фильтрацией границ дат).
+    /// 4. Сводная информация по категории блюд за указанный период времени.
     /// </summary>
     [HttpGet("category-summary")]
     public async Task<ActionResult<CategorySummaryDto>> GetCategorySummary(
@@ -95,22 +96,18 @@ public class AnalyticsController : ControllerBase
         [FromQuery] DateTime periodEnd,
         CancellationToken ct)
     {
-        var matchingOrders = await _db.Orders
+        var baseQuery = _db.Orders
             .Where(o => o.CreatedAt >= periodStart && o.CreatedAt <= periodEnd)
-            .Include(o => o.Items)
-                .ThenInclude(i => i.Dish)
-                    .ThenInclude(d => d.Category)
-            .ToListAsync(ct);
+            .Where(o => o.Items.Any(i => i.Dish.Category.Id == categoryId));
 
-        var filteredOrders = matchingOrders
-            .Where(o => o.Items.Any(i => i.Dish?.Category?.Id == categoryId))
-            .ToList();
+        var ordersCount = await baseQuery.CountAsync(ct);
 
-        var ordersCount = filteredOrders.Count;
-        var totalAmount = filteredOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.Dish?.Category?.Id == categoryId)
-            .Sum(i => i.Quantity * (i.Dish?.Price ?? 0m));
+        var totalAmount = ordersCount > 0
+            ? await baseQuery
+                .SelectMany(o => o.Items)
+                .Where(i => i.Dish.Category.Id == categoryId)
+                .SumAsync(i => (decimal)i.Quantity * i.Dish.Price, ct)
+            : 0m;
 
         var averageAmount = ordersCount > 0 ? Math.Round(totalAmount / ordersCount, 2) : 0m;
 
@@ -123,24 +120,30 @@ public class AnalyticsController : ControllerBase
     [HttpGet("top-spending-customer")]
     public async Task<ActionResult<TopCustomerDto>> GetTopSpendingCustomer(CancellationToken ct)
     {
-        var orders = await _db.Orders
-            .Include(o => o.Customer)
-            .Include(o => o.Items)
-                .ThenInclude(i => i.Dish)
-            .ToListAsync(ct);
+        var hasOrders = await _db.Orders.AnyAsync(ct);
+        if (!hasOrders) return NotFound("Заказы отсутствуют.");
 
-        if (orders.Count == 0) return NotFound("Заказы отсутствуют.");
-
-        var top = orders
-            .GroupBy(o => o.Customer)
-            .Select(g => new TopCustomerDto(
-                g.Key.Id,
-                g.Key.FullName,
-                g.Sum(o => o.Items.Sum(i => i.Quantity * i.Dish.Price))
-            ))
+        var top = await _db.Orders
+            .GroupBy(o => new
+            {
+                o.Customer.Id,
+                o.Customer.LastName,
+                o.Customer.FirstName,
+                o.Customer.Patronymic
+            })
+            .Select(g => new
+            {
+                CustomerId = g.Key.Id,
+                FullName = g.Key.Patronymic != null && g.Key.Patronymic != ""
+                    ? g.Key.LastName + " " + g.Key.FirstName + " " + g.Key.Patronymic
+                    : g.Key.LastName + " " + g.Key.FirstName,
+                TotalSpent = g.Sum(o => o.Items.Sum(i => (decimal)i.Quantity * i.Dish.Price))
+            })
             .OrderByDescending(x => x.TotalSpent)
-            .FirstOrDefault();
+            .FirstOrDefaultAsync(ct);
 
-        return Ok(top);
+        if (top is null) return NotFound("Заказы отсутствуют.");
+
+        return Ok(new TopCustomerDto(top.CustomerId, top.FullName, top.TotalSpent));
     }
 }

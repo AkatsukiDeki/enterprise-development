@@ -46,6 +46,24 @@ public class OrdersController : ControllerBase
         return order is null ? NotFound() : order;
     }
 
+    /// <summary>
+    /// Получение коллекции ассоциированных позиций заказа.
+    /// </summary>
+    [HttpGet("{id:int}/items")]
+    public async Task<ActionResult<IEnumerable<OrderItem>>> GetOrderItems(int id, CancellationToken ct)
+    {
+        var exists = await _db.Orders.AnyAsync(o => o.Id == id, ct);
+        if (!exists) return NotFound();
+
+        return await _db.Orders
+            .Where(o => o.Id == id)
+            .SelectMany(o => o.Items)
+            .Include(i => i.Dish)
+                .ThenInclude(d => d.Category)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     [HttpPost]
     public async Task<ActionResult<Order>> Create([FromBody] CreateOrderRequest request, CancellationToken ct)
     {
@@ -96,5 +114,19 @@ public class OrdersController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id, ct);
+
+        if (order is null) return NotFound();
+
+        _db.Orders.Remove(order);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
     }
 }

@@ -29,6 +29,40 @@ public class RestaurantsController : ControllerBase
         return restaurant is null ? NotFound() : restaurant;
     }
 
+    /// <summary>
+    /// Получение коллекции ассоциированных блюд ресторана.
+    /// </summary>
+    [HttpGet("{id:int}/dishes")]
+    public async Task<ActionResult<IEnumerable<Dish>>> GetDishes(int id, CancellationToken ct)
+    {
+        var exists = await _db.Restaurants.AnyAsync(r => r.Id == id, ct);
+        if (!exists) return NotFound();
+
+        return await _db.Dishes
+            .AsNoTracking()
+            .Where(d => d.Restaurant.Id == id)
+            .Include(d => d.Category)
+            .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Получение коллекции ассоциированных заказов ресторана.
+    /// </summary>
+    [HttpGet("{id:int}/orders")]
+    public async Task<ActionResult<IEnumerable<Order>>> GetOrders(int id, CancellationToken ct)
+    {
+        var exists = await _db.Restaurants.AnyAsync(r => r.Id == id, ct);
+        if (!exists) return NotFound();
+
+        return await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.Restaurant.Id == id)
+            .Include(o => o.Customer)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Dish)
+            .ToListAsync(ct);
+    }
+
     [HttpPost]
     public async Task<ActionResult<Restaurant>> Create([FromBody] Restaurant restaurant, CancellationToken ct)
     {

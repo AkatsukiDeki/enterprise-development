@@ -29,6 +29,24 @@ public class CustomersController : ControllerBase
         return customer is null ? NotFound() : customer;
     }
 
+    /// <summary>
+    /// Получение коллекции ассоциированных заказов клиента.
+    /// </summary>
+    [HttpGet("{id:int}/orders")]
+    public async Task<ActionResult<IEnumerable<Order>>> GetOrders(int id, CancellationToken ct)
+    {
+        var exists = await _db.Customers.AnyAsync(c => c.Id == id, ct);
+        if (!exists) return NotFound();
+
+        return await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.Customer.Id == id)
+            .Include(o => o.Restaurant)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Dish)
+            .ToListAsync(ct);
+    }
+
     [HttpPost]
     public async Task<ActionResult<Customer>> Create([FromBody] Customer customer, CancellationToken ct)
     {

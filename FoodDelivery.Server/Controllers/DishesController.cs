@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FoodDelivery.Server.Controllers;
 
-public record CreateDishRequest(string Name, int WeightGrams, decimal Price, int CategoryId, int RestaurantId);
+/// <summary>
+/// DTO запроса на создание или обновление блюда.
+/// </summary>
+public record SaveDishRequest(string Name, int WeightGrams, decimal Price, int CategoryId, int RestaurantId);
 
 [ApiController]
 [Route("api/[controller]")]
@@ -40,8 +43,13 @@ public class DishesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Dish>> Create([FromBody] CreateDishRequest request, CancellationToken ct)
+    public async Task<ActionResult<Dish>> Create([FromBody] SaveDishRequest request, CancellationToken ct)
     {
+        if (request.WeightGrams <= 0 || request.Price <= 0)
+        {
+            return BadRequest("Вес и стоимость блюда должны быть положительными числами.");
+        }
+
         var category = await _db.Categories.FindAsync([request.CategoryId], ct);
         var restaurant = await _db.Restaurants.FindAsync([request.RestaurantId], ct);
 
@@ -64,6 +72,39 @@ public class DishesController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return CreatedAtAction(nameof(GetById), new { id = dish.Id }, dish);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] SaveDishRequest request, CancellationToken ct)
+    {
+        if (request.WeightGrams <= 0 || request.Price <= 0)
+        {
+            return BadRequest("Вес и стоимость блюда должны быть положительными числами.");
+        }
+
+        var dish = await _db.Dishes
+            .Include(d => d.Category)
+            .Include(d => d.Restaurant)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (dish is null) return NotFound();
+
+        var category = await _db.Categories.FindAsync([request.CategoryId], ct);
+        var restaurant = await _db.Restaurants.FindAsync([request.RestaurantId], ct);
+
+        if (category is null || restaurant is null)
+        {
+            return BadRequest("Указанная категория или ресторан не существуют.");
+        }
+
+        dish.Name = request.Name;
+        dish.WeightGrams = request.WeightGrams;
+        dish.Price = request.Price;
+        dish.Category = category;
+        dish.Restaurant = restaurant;
+
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
     }
 
     [HttpDelete("{id:int}")]

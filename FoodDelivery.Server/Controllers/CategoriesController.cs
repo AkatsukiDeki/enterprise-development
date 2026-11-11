@@ -29,6 +29,22 @@ public class CategoriesController : ControllerBase
         return category is null ? NotFound() : category;
     }
 
+    /// <summary>
+    /// Получение коллекции ассоциированных блюд для категории.
+    /// </summary>
+    [HttpGet("{id:int}/dishes")]
+    public async Task<ActionResult<IEnumerable<Dish>>> GetDishesByCategory(int id, CancellationToken ct)
+    {
+        var exists = await _db.Categories.AnyAsync(c => c.Id == id, ct);
+        if (!exists) return NotFound();
+
+        return await _db.Dishes
+            .AsNoTracking()
+            .Where(d => d.Category.Id == id)
+            .Include(d => d.Restaurant)
+            .ToListAsync(ct);
+    }
+
     [HttpPost]
     public async Task<ActionResult<Category>> Create([FromBody] Category category, CancellationToken ct)
     {
