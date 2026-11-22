@@ -92,6 +92,11 @@ public sealed class DishService(InMemoryFoodDeliveryStore store, IMapper mapper)
             var dish = store.Dishes.FirstOrDefault(d => d.Id == id)
                 ?? throw new KeyNotFoundException($"Dish with Id {id} not found");
 
+            if (store.Orders.Any(o => o.Items.Any(i => i.Dish.Id == id)))
+            {
+                throw new InvalidOperationException($"Dish with Id {id} is referenced by existing orders and cannot be deleted.");
+            }
+
             store.Dishes.Remove(dish);
             return Task.CompletedTask;
         }

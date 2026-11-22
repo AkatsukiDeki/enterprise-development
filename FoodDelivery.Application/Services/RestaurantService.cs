@@ -80,6 +80,11 @@ public sealed class RestaurantService(InMemoryFoodDeliveryStore store, IMapper m
             var restaurant = store.Restaurants.FirstOrDefault(r => r.Id == id)
                 ?? throw new KeyNotFoundException($"Restaurant with Id {id} not found");
 
+            if (store.Dishes.Any(d => d.Restaurant.Id == id) || store.Orders.Any(o => o.Restaurant.Id == id))
+            {
+                throw new InvalidOperationException($"Restaurant with Id {id} is referenced by existing dishes or orders and cannot be deleted.");
+            }
+
             store.Restaurants.Remove(restaurant);
             return Task.CompletedTask;
         }

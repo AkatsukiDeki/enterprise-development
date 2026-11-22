@@ -82,6 +82,7 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(int id)
     {
         await Service.Delete(id);

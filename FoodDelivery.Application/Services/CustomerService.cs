@@ -76,6 +76,11 @@ public sealed class CustomerService(InMemoryFoodDeliveryStore store, IMapper map
             var customer = store.Customers.FirstOrDefault(c => c.Id == id)
                 ?? throw new KeyNotFoundException($"Customer with Id {id} not found");
 
+            if (store.Orders.Any(o => o.Customer.Id == id))
+            {
+                throw new InvalidOperationException($"Customer with Id {id} is referenced by existing orders and cannot be deleted.");
+            }
+
             store.Customers.Remove(customer);
             return Task.CompletedTask;
         }

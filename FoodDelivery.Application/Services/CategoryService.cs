@@ -76,6 +76,11 @@ public sealed class CategoryService(InMemoryFoodDeliveryStore store, IMapper map
             var category = store.Categories.FirstOrDefault(c => c.Id == id)
                 ?? throw new KeyNotFoundException($"Category with Id {id} not found");
 
+            if (store.Dishes.Any(d => d.Category.Id == id))
+            {
+                throw new InvalidOperationException($"Category with Id {id} is referenced by existing dishes and cannot be deleted.");
+            }
+
             store.Categories.Remove(category);
             return Task.CompletedTask;
         }

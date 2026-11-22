@@ -17,7 +17,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         var (statusCode, title) = exception switch
         {
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
-            ArgumentException or InvalidOperationException => (StatusCodes.Status400BadRequest, "Invalid request"),
+            ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
+            InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict"),
             _ => (0, string.Empty)
         };
 
