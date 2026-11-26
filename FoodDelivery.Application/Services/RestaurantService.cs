@@ -1,6 +1,5 @@
 using FoodDelivery.Application.Contracts.Restaurants;
 using FoodDelivery.Domain.Entities;
-using FoodDelivery.Infrastructure.InMemory;
 using MapsterMapper;
 
 namespace FoodDelivery.Application.Services;
@@ -8,36 +7,35 @@ namespace FoodDelivery.Application.Services;
 /// <summary>
 /// Сервис управления ресторанами.
 /// </summary>
-/// <param name="store">Хранилище данных в памяти.</param>
+/// <param name="store">Хранилище данных.</param>
 /// <param name="mapper">Маппер сущностей и DTO.</param>
-public sealed class RestaurantService(InMemoryFoodDeliveryStore store, IMapper mapper) : IRestaurantService
+public sealed class RestaurantService(IFoodDeliveryStore store, IMapper mapper) : IRestaurantService
 {
     /// <inheritdoc/>
-    public Task<IReadOnlyList<RestaurantDto>> GetAll()
+    public IReadOnlyList<RestaurantDto> GetAll()
     {
         lock (store.SyncRoot)
         {
-            IReadOnlyList<RestaurantDto> result = store.Restaurants
+            return store.Restaurants
                 .Select(mapper.Map<RestaurantDto>)
                 .ToList();
-            return Task.FromResult(result);
         }
     }
 
     /// <inheritdoc/>
-    public Task<RestaurantDto> Get(int id)
+    public RestaurantDto Get(int id)
     {
         lock (store.SyncRoot)
         {
             var restaurant = store.Restaurants.FirstOrDefault(r => r.Id == id)
                 ?? throw new KeyNotFoundException($"Restaurant with Id {id} not found");
 
-            return Task.FromResult(mapper.Map<RestaurantDto>(restaurant));
+            return mapper.Map<RestaurantDto>(restaurant);
         }
     }
 
     /// <inheritdoc/>
-    public Task<RestaurantDto> Create(RestaurantCreateUpdateDto dto)
+    public RestaurantDto Create(RestaurantCreateUpdateDto dto)
     {
         ValidateWorkingHours(dto);
 
@@ -47,33 +45,27 @@ public sealed class RestaurantService(InMemoryFoodDeliveryStore store, IMapper m
             restaurant.Id = store.NextRestaurantId();
 
             store.Restaurants.Add(restaurant);
-            return Task.FromResult(mapper.Map<RestaurantDto>(restaurant));
+            return mapper.Map<RestaurantDto>(restaurant);
         }
     }
 
     /// <inheritdoc/>
-    public Task<RestaurantDto> Update(int id, RestaurantCreateUpdateDto dto)
+    public RestaurantDto Update(int id, RestaurantCreateUpdateDto dto)
     {
         ValidateWorkingHours(dto);
 
         lock (store.SyncRoot)
         {
-            var index = store.Restaurants.FindIndex(r => r.Id == id);
-            if (index < 0)
-            {
-                throw new KeyNotFoundException($"Restaurant with Id {id} not found");
-            }
+            var restaurant = store.Restaurants.FirstOrDefault(r => r.Id == id)
+                ?? throw new KeyNotFoundException($"Restaurant with Id {id} not found");
 
-            var restaurant = mapper.Map<Restaurant>(dto);
-            restaurant.Id = id;
-            store.Restaurants[index] = restaurant;
-
-            return Task.FromResult(mapper.Map<RestaurantDto>(restaurant));
+            mapper.Map(dto, restaurant);
+            return mapper.Map<RestaurantDto>(restaurant);
         }
     }
 
     /// <inheritdoc/>
-    public Task Delete(int id)
+    public void Delete(int id)
     {
         lock (store.SyncRoot)
         {
@@ -86,7 +78,6 @@ public sealed class RestaurantService(InMemoryFoodDeliveryStore store, IMapper m
             }
 
             store.Restaurants.Remove(restaurant);
-            return Task.CompletedTask;
         }
     }
 
@@ -94,7 +85,7 @@ public sealed class RestaurantService(InMemoryFoodDeliveryStore store, IMapper m
     {
         if (dto.OpeningTime >= dto.ClosingTime)
         {
-            throw new ArgumentException("Время открытия ресторана должно быть раньше времени закрытия.");
+            throw new ArgumentException("Restaurant opening time must be earlier than closing time.");
         }
     }
 }

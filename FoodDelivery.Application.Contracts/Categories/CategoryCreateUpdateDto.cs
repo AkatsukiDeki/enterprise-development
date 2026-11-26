@@ -7,4 +7,4 @@ namespace FoodDelivery.Application.Contracts.Categories;
 /// </summary>
 /// <param name="Name">Название категории.</param>
 public sealed record CategoryCreateUpdateDto(
-    [Required] [MinLength(1)] string Name);
+    [Required] string Name);

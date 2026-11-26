@@ -1,3 +1,4 @@
+using FoodDelivery.Application;
 using FoodDelivery.Domain.Data;
 using FoodDelivery.Domain.Entities;
 
@@ -6,7 +7,7 @@ namespace FoodDelivery.Infrastructure.InMemory;
 /// <summary>
 /// Потокобезопасное хранилище данных в памяти поверх <see cref="TestData"/>.
 /// </summary>
-public sealed class InMemoryFoodDeliveryStore
+public sealed class InMemoryFoodDeliveryStore : IFoodDeliveryStore
 {
     private int _nextCategoryId;
     private int _nextRestaurantId;

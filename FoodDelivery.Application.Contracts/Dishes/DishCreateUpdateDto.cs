@@ -12,7 +12,7 @@ namespace FoodDelivery.Application.Contracts.Dishes;
 /// <param name="CategoryId">Идентификатор категории.</param>
 /// <param name="RestaurantId">Идентификатор ресторана.</param>
 public sealed record DishCreateUpdateDto(
-    [Required] [MinLength(1)] string Name,
+    [Required] string Name,
     string? Description,
     [Range(1, int.MaxValue)] int WeightGrams,
     [Range(0.01, double.MaxValue)] decimal Price,

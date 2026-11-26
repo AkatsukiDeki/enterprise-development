@@ -1,6 +1,5 @@
 using FoodDelivery.Application.Contracts.Categories;
 using FoodDelivery.Domain.Entities;
-using FoodDelivery.Infrastructure.InMemory;
 using MapsterMapper;
 
 namespace FoodDelivery.Application.Services;
@@ -8,36 +7,35 @@ namespace FoodDelivery.Application.Services;
 /// <summary>
 /// Сервис управления категориями блюд.
 /// </summary>
-/// <param name="store">Хранилище данных в памяти.</param>
+/// <param name="store">Хранилище данных.</param>
 /// <param name="mapper">Маппер сущностей и DTO.</param>
-public sealed class CategoryService(InMemoryFoodDeliveryStore store, IMapper mapper) : ICategoryService
+public sealed class CategoryService(IFoodDeliveryStore store, IMapper mapper) : ICategoryService
 {
     /// <inheritdoc/>
-    public Task<IReadOnlyList<CategoryDto>> GetAll()
+    public IReadOnlyList<CategoryDto> GetAll()
     {
         lock (store.SyncRoot)
         {
-            IReadOnlyList<CategoryDto> result = store.Categories
+            return store.Categories
                 .Select(mapper.Map<CategoryDto>)
                 .ToList();
-            return Task.FromResult(result);
         }
     }
 
     /// <inheritdoc/>
-    public Task<CategoryDto> Get(int id)
+    public CategoryDto Get(int id)
     {
         lock (store.SyncRoot)
         {
             var category = store.Categories.FirstOrDefault(c => c.Id == id)
                 ?? throw new KeyNotFoundException($"Category with Id {id} not found");
 
-            return Task.FromResult(mapper.Map<CategoryDto>(category));
+            return mapper.Map<CategoryDto>(category);
         }
     }
 
     /// <inheritdoc/>
-    public Task<CategoryDto> Create(CategoryCreateUpdateDto dto)
+    public CategoryDto Create(CategoryCreateUpdateDto dto)
     {
         lock (store.SyncRoot)
         {
@@ -45,31 +43,25 @@ public sealed class CategoryService(InMemoryFoodDeliveryStore store, IMapper map
             category.Id = store.NextCategoryId();
 
             store.Categories.Add(category);
-            return Task.FromResult(mapper.Map<CategoryDto>(category));
+            return mapper.Map<CategoryDto>(category);
         }
     }
 
     /// <inheritdoc/>
-    public Task<CategoryDto> Update(int id, CategoryCreateUpdateDto dto)
+    public CategoryDto Update(int id, CategoryCreateUpdateDto dto)
     {
         lock (store.SyncRoot)
         {
-            var index = store.Categories.FindIndex(c => c.Id == id);
-            if (index < 0)
-            {
-                throw new KeyNotFoundException($"Category with Id {id} not found");
-            }
+            var category = store.Categories.FirstOrDefault(c => c.Id == id)
+                ?? throw new KeyNotFoundException($"Category with Id {id} not found");
 
-            var category = mapper.Map<Category>(dto);
-            category.Id = id;
-            store.Categories[index] = category;
-
-            return Task.FromResult(mapper.Map<CategoryDto>(category));
+            mapper.Map(dto, category);
+            return mapper.Map<CategoryDto>(category);
         }
     }
 
     /// <inheritdoc/>
-    public Task Delete(int id)
+    public void Delete(int id)
     {
         lock (store.SyncRoot)
         {
@@ -82,7 +74,6 @@ public sealed class CategoryService(InMemoryFoodDeliveryStore store, IMapper map
             }
 
             store.Categories.Remove(category);
-            return Task.CompletedTask;
         }
     }
 }

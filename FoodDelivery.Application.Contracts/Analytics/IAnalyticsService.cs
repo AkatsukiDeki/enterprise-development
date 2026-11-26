@@ -9,20 +9,20 @@ public interface IAnalyticsService
     /// Возвращает идентификаторы топ-5 ресторанов по количеству заказов.
     /// </summary>
     /// <returns>Список идентификаторов топ-5 ресторанов.</returns>
-    public Task<IReadOnlyList<int>> GetTop5RestaurantsAsync();
+    public IReadOnlyList<int> GetTop5Restaurants();
 
     /// <summary>
     /// Возвращает идентификаторы заказов с минимальным временем доставки.
     /// </summary>
     /// <returns>Список идентификаторов самых быстрых заказов.</returns>
-    public Task<IReadOnlyList<int>> GetFastestOrdersAsync();
+    public IReadOnlyList<int> GetFastestOrders();
 
     /// <summary>
     /// Возвращает идентификаторы клиентов, заказывавших в указанном ресторане, отсортированные по ФИО.
     /// </summary>
     /// <param name="restaurantId">Идентификатор ресторана.</param>
     /// <returns>Список идентификаторов клиентов, отсортированный по ФИО.</returns>
-    public Task<IReadOnlyList<int>> GetCustomersByRestaurantAsync(int restaurantId);
+    public IReadOnlyList<int> GetCustomersByRestaurant(int restaurantId);
 
     /// <summary>
     /// Возвращает сводную информацию по категории блюд за указанный период.
@@ -31,7 +31,7 @@ public interface IAnalyticsService
     /// <param name="periodStart">Начало периода.</param>
     /// <param name="periodEnd">Окончание периода.</param>
     /// <returns>Сводная статистика заказов по категории за период.</returns>
-    public Task<CategorySummaryDto> GetCategorySummaryAsync(
+    public CategorySummaryDto GetCategorySummary(
         int categoryId,
         DateTime periodStart,
         DateTime periodEnd);
@@ -40,5 +40,5 @@ public interface IAnalyticsService
     /// Возвращает клиента, потратившего наибольшую сумму за всё время.
     /// </summary>
     /// <returns>Информация о клиенте с наибольшей суммой заказов.</returns>
-    public Task<TopCustomerDto> GetTopSpendingCustomerAsync();
+    public TopCustomerDto GetTopSpendingCustomer();
 }

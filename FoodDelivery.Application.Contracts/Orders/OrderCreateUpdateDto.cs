@@ -13,6 +13,6 @@ namespace FoodDelivery.Application.Contracts.Orders;
 public sealed record OrderCreateUpdateDto(
     [Range(1, int.MaxValue)] int CustomerId,
     [Range(1, int.MaxValue)] int RestaurantId,
-    DateTime? CreatedAt,
+    DateTime CreatedAt,
     DateTime? DeliveredAt,
     [Required] [MinLength(1)] IReadOnlyList<OrderItemCreateUpdateDto> Items);

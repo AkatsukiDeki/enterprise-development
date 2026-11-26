@@ -11,8 +11,8 @@ namespace FoodDelivery.Application.Contracts.Restaurants;
 /// <param name="OpeningTime">Время открытия.</param>
 /// <param name="ClosingTime">Время закрытия.</param>
 public sealed record RestaurantCreateUpdateDto(
-    [Required] [MinLength(1)] string Name,
-    [Required] [MinLength(1)] string Address,
+    [Required] string Name,
+    [Required] string Address,
     [Range(0.0, 5.0)] double Rating,
     TimeOnly OpeningTime,
     TimeOnly ClosingTime);

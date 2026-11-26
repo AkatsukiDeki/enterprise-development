@@ -16,9 +16,9 @@ public sealed class AnalyticsController(IAnalyticsService analyticsService) : Co
     /// </summary>
     [HttpGet("top-restaurants")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<int>>> GetTop5Restaurants()
+    public ActionResult<IReadOnlyList<int>> GetTop5Restaurants()
     {
-        var result = await analyticsService.GetTop5RestaurantsAsync();
+        var result = analyticsService.GetTop5Restaurants();
         return Ok(result);
     }
 
@@ -27,9 +27,9 @@ public sealed class AnalyticsController(IAnalyticsService analyticsService) : Co
     /// </summary>
     [HttpGet("fastest-orders")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<int>>> GetFastestOrders()
+    public ActionResult<IReadOnlyList<int>> GetFastestOrders()
     {
-        var result = await analyticsService.GetFastestOrdersAsync();
+        var result = analyticsService.GetFastestOrders();
         return Ok(result);
     }
 
@@ -40,9 +40,9 @@ public sealed class AnalyticsController(IAnalyticsService analyticsService) : Co
     [HttpGet("restaurant-customers/{restaurantId:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<int>>> GetCustomersByRestaurant(int restaurantId)
+    public ActionResult<IReadOnlyList<int>> GetCustomersByRestaurant(int restaurantId)
     {
-        var result = await analyticsService.GetCustomersByRestaurantAsync(restaurantId);
+        var result = analyticsService.GetCustomersByRestaurant(restaurantId);
         return Ok(result);
     }
 
@@ -56,12 +56,12 @@ public sealed class AnalyticsController(IAnalyticsService analyticsService) : Co
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CategorySummaryDto>> GetCategorySummary(
+    public ActionResult<CategorySummaryDto> GetCategorySummary(
         [FromQuery] int categoryId,
         [FromQuery] DateTime periodStart,
         [FromQuery] DateTime periodEnd)
     {
-        var result = await analyticsService.GetCategorySummaryAsync(categoryId, periodStart, periodEnd);
+        var result = analyticsService.GetCategorySummary(categoryId, periodStart, periodEnd);
         return Ok(result);
     }
 
@@ -71,9 +71,9 @@ public sealed class AnalyticsController(IAnalyticsService analyticsService) : Co
     [HttpGet("top-spending-customer")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TopCustomerDto>> GetTopSpendingCustomer()
+    public ActionResult<TopCustomerDto> GetTopSpendingCustomer()
     {
-        var result = await analyticsService.GetTopSpendingCustomerAsync();
+        var result = analyticsService.GetTopSpendingCustomer();
         return Ok(result);
     }
 }

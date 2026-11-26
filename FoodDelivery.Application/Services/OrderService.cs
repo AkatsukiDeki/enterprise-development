@@ -1,6 +1,5 @@
 using FoodDelivery.Application.Contracts.Orders;
 using FoodDelivery.Domain.Entities;
-using FoodDelivery.Infrastructure.InMemory;
 using MapsterMapper;
 
 namespace FoodDelivery.Application.Services;
@@ -8,83 +7,72 @@ namespace FoodDelivery.Application.Services;
 /// <summary>
 /// Сервис управления заказами.
 /// </summary>
-/// <param name="store">Хранилище данных в памяти.</param>
+/// <param name="store">Хранилище данных.</param>
 /// <param name="mapper">Маппер сущностей и DTO.</param>
-public sealed class OrderService(InMemoryFoodDeliveryStore store, IMapper mapper) : IOrderService
+public sealed class OrderService(IFoodDeliveryStore store, IMapper mapper) : IOrderService
 {
     /// <inheritdoc/>
-    public Task<IReadOnlyList<OrderDto>> GetAll()
+    public IReadOnlyList<OrderDto> GetAll()
     {
         lock (store.SyncRoot)
         {
-            IReadOnlyList<OrderDto> result = store.Orders
+            return store.Orders
                 .Select(mapper.Map<OrderDto>)
                 .ToList();
-            return Task.FromResult(result);
         }
     }
 
     /// <inheritdoc/>
-    public Task<OrderDto> Get(int id)
+    public OrderDto Get(int id)
     {
         lock (store.SyncRoot)
         {
             var order = store.Orders.FirstOrDefault(o => o.Id == id)
                 ?? throw new KeyNotFoundException($"Order with Id {id} not found");
 
-            return Task.FromResult(mapper.Map<OrderDto>(order));
+            return mapper.Map<OrderDto>(order);
         }
     }
 
     /// <inheritdoc/>
-    public Task<OrderDto> Create(OrderCreateUpdateDto dto)
+    public OrderDto Create(OrderCreateUpdateDto dto)
     {
         lock (store.SyncRoot)
         {
-            var createdAt = dto.CreatedAt ?? DateTime.UtcNow;
-            var (customer, restaurant, items) = ResolveAndValidate(dto, createdAt);
+            var (customer, restaurant, items) = ResolveAndValidate(dto);
 
             var order = mapper.Map<Order>(dto);
             order.Id = store.NextOrderId();
             order.Customer = customer;
             order.Restaurant = restaurant;
-            order.CreatedAt = createdAt;
             order.Items = items;
 
             store.Orders.Add(order);
-            return Task.FromResult(mapper.Map<OrderDto>(order));
+            return mapper.Map<OrderDto>(order);
         }
     }
 
     /// <inheritdoc/>
-    public Task<OrderDto> Update(int id, OrderCreateUpdateDto dto)
+    public OrderDto Update(int id, OrderCreateUpdateDto dto)
     {
         lock (store.SyncRoot)
         {
-            var index = store.Orders.FindIndex(o => o.Id == id);
-            if (index < 0)
-            {
-                throw new KeyNotFoundException($"Order with Id {id} not found");
-            }
+            var order = store.Orders.FirstOrDefault(o => o.Id == id)
+                ?? throw new KeyNotFoundException($"Order with Id {id} not found");
 
-            var existingOrder = store.Orders[index];
-            var createdAt = dto.CreatedAt ?? existingOrder.CreatedAt;
-            var (customer, restaurant, items) = ResolveAndValidate(dto, createdAt);
+            var (customer, restaurant, items) = ResolveAndValidate(dto);
 
-            var order = mapper.Map<Order>(dto);
-            order.Id = id;
+            mapper.Map(dto, order);
             order.Customer = customer;
             order.Restaurant = restaurant;
-            order.CreatedAt = createdAt;
             order.Items = items;
-            store.Orders[index] = order;
 
-            return Task.FromResult(mapper.Map<OrderDto>(order));
+            return mapper.Map<OrderDto>(order);
         }
     }
 
     /// <inheritdoc/>
-    public Task Delete(int id)
+    public void Delete(int id)
     {
         lock (store.SyncRoot)
         {
@@ -92,17 +80,15 @@ public sealed class OrderService(InMemoryFoodDeliveryStore store, IMapper mapper
                 ?? throw new KeyNotFoundException($"Order with Id {id} not found");
 
             store.Orders.Remove(order);
-            return Task.CompletedTask;
         }
     }
 
     private (Customer Customer, Restaurant Restaurant, List<OrderItem> Items) ResolveAndValidate(
-        OrderCreateUpdateDto dto,
-        DateTime createdAt)
+        OrderCreateUpdateDto dto)
     {
-        if (dto.DeliveredAt.HasValue && dto.DeliveredAt.Value < createdAt)
+        if (dto.DeliveredAt.HasValue && dto.DeliveredAt.Value < dto.CreatedAt)
         {
-            throw new ArgumentException("Время доставки не может быть раньше времени создания заказа.");
+            throw new ArgumentException("Delivery time cannot be earlier than order creation time.");
         }
 
         var customer = store.Customers.FirstOrDefault(c => c.Id == dto.CustomerId)
@@ -119,7 +105,7 @@ public sealed class OrderService(InMemoryFoodDeliveryStore store, IMapper mapper
 
             if (dish.Restaurant.Id != restaurant.Id)
             {
-                throw new ArgumentException($"Блюдо '{dish.Name}' не принадлежит ресторану '{restaurant.Name}'.");
+                throw new ArgumentException($"Dish '{dish.Name}' does not belong to restaurant '{restaurant.Name}'.");
             }
 
             var orderItem = mapper.Map<OrderItem>(itemDto);

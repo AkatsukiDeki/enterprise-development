@@ -22,7 +22,7 @@ builder.Services.AddSingleton(mapsterConfig);
 builder.Services.AddScoped<IMapper>(sp => new Mapper(sp.GetRequiredService<TypeAdapterConfig>()));
 
 builder.Services.AddSingleton<TestData>();
-builder.Services.AddSingleton<InMemoryFoodDeliveryStore>();
+builder.Services.AddSingleton<IFoodDeliveryStore, InMemoryFoodDeliveryStore>();
 
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IRestaurantService, RestaurantService>();

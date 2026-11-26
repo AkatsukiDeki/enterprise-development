@@ -12,6 +12,5 @@
   <ItemGroup>
     <ProjectReference Include="..\FoodDelivery.Application.Contracts\FoodDelivery.Application.Contracts.csproj" />
     <ProjectReference Include="..\FoodDelivery.Domain\FoodDelivery.Domain.csproj" />
-    <ProjectReference Include="..\FoodDelivery.Infrastructure.InMemory\FoodDelivery.Infrastructure.InMemory.csproj" />
   </ItemGroup>
 </Project>

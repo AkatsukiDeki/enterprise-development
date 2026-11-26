@@ -27,9 +27,9 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<TDto>>> GetAll()
+    public ActionResult<IReadOnlyList<TDto>> GetAll()
     {
-        var items = await Service.GetAll();
+        var items = Service.GetAll();
         return Ok(items);
     }
 
@@ -40,9 +40,9 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     [HttpGet("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TDto>> GetById(int id)
+    public ActionResult<TDto> GetById(int id)
     {
-        var item = await Service.Get(id);
+        var item = Service.Get(id);
         return Ok(item);
     }
 
@@ -54,9 +54,9 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TDto>> Create([FromBody] TCreateUpdateDto dto)
+    public ActionResult<TDto> Create([FromBody] TCreateUpdateDto dto)
     {
-        var created = await Service.Create(dto);
+        var created = Service.Create(dto);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -69,9 +69,10 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TDto>> Update(int id, [FromBody] TCreateUpdateDto dto)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public ActionResult<TDto> Update(int id, [FromBody] TCreateUpdateDto dto)
     {
-        var updated = await Service.Update(id, dto);
+        var updated = Service.Update(id, dto);
         return Ok(updated);
     }
 
@@ -83,9 +84,9 @@ public abstract class CrudControllerBase<TDto, TCreateUpdateDto, TService>(TServ
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Delete(int id)
+    public IActionResult Delete(int id)
     {
-        await Service.Delete(id);
+        Service.Delete(id);
         return NoContent();
     }
 }

@@ -1,5 +1,4 @@
 using FoodDelivery.Application.Contracts.Analytics;
-using FoodDelivery.Infrastructure.InMemory;
 using MapsterMapper;
 
 namespace FoodDelivery.Application.Services;
@@ -7,54 +6,59 @@ namespace FoodDelivery.Application.Services;
 /// <summary>
 /// Сервис аналитических запросов службы доставки.
 /// </summary>
-/// <param name="store">Хранилище данных в памяти.</param>
+/// <param name="store">Хранилище данных.</param>
 /// <param name="mapper">Маппер сущностей и DTO.</param>
-public sealed class AnalyticsService(InMemoryFoodDeliveryStore store, IMapper mapper) : IAnalyticsService
+public sealed class AnalyticsService(IFoodDeliveryStore store, IMapper mapper) : IAnalyticsService
 {
     /// <inheritdoc/>
-    public Task<IReadOnlyList<int>> GetTop5RestaurantsAsync()
+    public IReadOnlyList<int> GetTop5Restaurants()
     {
         lock (store.SyncRoot)
         {
-            IReadOnlyList<int> result = store.Orders
+            return store.Orders
                 .CountBy(o => o.Restaurant.Id)
                 .OrderByDescending(pair => pair.Value)
                 .ThenBy(pair => pair.Key)
                 .Take(5)
                 .Select(pair => pair.Key)
                 .ToList();
-
-            return Task.FromResult(result);
         }
     }
 
     /// <inheritdoc/>
-    public Task<IReadOnlyList<int>> GetFastestOrdersAsync()
+    public IReadOnlyList<int> GetFastestOrders()
     {
         lock (store.SyncRoot)
         {
-            var deliveredOrders = store.Orders
-                .Where(o => o.DeliveryDuration.HasValue)
-                .ToList();
+            TimeSpan? minDuration = null;
+            var fastestOrderIds = new List<int>();
 
-            if (deliveredOrders.Count == 0)
+            foreach (var order in store.Orders)
             {
-                return Task.FromResult<IReadOnlyList<int>>([]);
+                if (!order.DeliveryDuration.HasValue)
+                {
+                    continue;
+                }
+
+                var duration = order.DeliveryDuration.Value;
+                if (!minDuration.HasValue || duration < minDuration.Value)
+                {
+                    minDuration = duration;
+                    fastestOrderIds.Clear();
+                    fastestOrderIds.Add(order.Id);
+                }
+                else if (duration == minDuration.Value)
+                {
+                    fastestOrderIds.Add(order.Id);
+                }
             }
 
-            var minDuration = deliveredOrders.Min(o => o.DeliveryDuration!.Value);
-
-            IReadOnlyList<int> result = deliveredOrders
-                .Where(o => o.DeliveryDuration == minDuration)
-                .Select(o => o.Id)
-                .ToList();
-
-            return Task.FromResult(result);
+            return fastestOrderIds;
         }
     }
 
     /// <inheritdoc/>
-    public Task<IReadOnlyList<int>> GetCustomersByRestaurantAsync(int restaurantId)
+    public IReadOnlyList<int> GetCustomersByRestaurant(int restaurantId)
     {
         lock (store.SyncRoot)
         {
@@ -63,27 +67,25 @@ public sealed class AnalyticsService(InMemoryFoodDeliveryStore store, IMapper ma
                 throw new KeyNotFoundException($"Restaurant with Id {restaurantId} not found");
             }
 
-            IReadOnlyList<int> customerIds = store.Orders
+            return store.Orders
                 .Where(o => o.Restaurant.Id == restaurantId)
                 .Select(o => o.Customer)
                 .DistinctBy(c => c.Id)
                 .OrderBy(c => c.FullName)
                 .Select(c => c.Id)
                 .ToList();
-
-            return Task.FromResult(customerIds);
         }
     }
 
     /// <inheritdoc/>
-    public Task<CategorySummaryDto> GetCategorySummaryAsync(
+    public CategorySummaryDto GetCategorySummary(
         int categoryId,
         DateTime periodStart,
         DateTime periodEnd)
     {
         if (periodStart > periodEnd)
         {
-            throw new ArgumentException("Начало периода не может быть позже окончания периода.");
+            throw new ArgumentException("Period start cannot be later than period end.");
         }
 
         lock (store.SyncRoot)
@@ -93,45 +95,54 @@ public sealed class AnalyticsService(InMemoryFoodDeliveryStore store, IMapper ma
                 throw new KeyNotFoundException($"Category with Id {categoryId} not found");
             }
 
-            var categoryOrders = store.Orders
-                .Where(o => o.CreatedAt >= periodStart && o.CreatedAt <= periodEnd)
-                .Where(o => o.Items.Any(i => i.Dish.Category.Id == categoryId))
-                .ToList();
+            var ordersCount = 0;
+            var totalAmount = 0m;
 
-            var ordersCount = categoryOrders.Count;
+            foreach (var order in store.Orders)
+            {
+                if (order.CreatedAt < periodStart || order.CreatedAt > periodEnd)
+                {
+                    continue;
+                }
 
-            var totalAmount = categoryOrders
-                .SelectMany(o => o.Items)
-                .Where(i => i.Dish.Category.Id == categoryId)
-                .Sum(i => i.SubTotal);
+                var hasCategoryDish = false;
+                foreach (var item in order.Items)
+                {
+                    if (item.Dish.Category.Id == categoryId)
+                    {
+                        hasCategoryDish = true;
+                        totalAmount += item.SubTotal;
+                    }
+                }
+
+                if (hasCategoryDish)
+                {
+                    ordersCount++;
+                }
+            }
 
             var averageAmount = ordersCount > 0 ? Math.Round(totalAmount / ordersCount, 2) : 0m;
 
-            return Task.FromResult(
-                mapper.Map<CategorySummaryDto>((categoryId, ordersCount, totalAmount, averageAmount)));
+            return mapper.Map<CategorySummaryDto>((categoryId, ordersCount, totalAmount, averageAmount));
         }
     }
 
     /// <inheritdoc/>
-    public Task<TopCustomerDto> GetTopSpendingCustomerAsync()
+    public TopCustomerDto GetTopSpendingCustomer()
     {
         lock (store.SyncRoot)
         {
-            var top = store.Orders
-                .GroupBy(o => o.Customer.Id)
-                .Select(g => (
-                    Customer: g.First().Customer,
-                    TotalSpent: g.Sum(o => o.TotalAmount)
-                ))
-                .OrderByDescending(x => x.TotalSpent)
-                .FirstOrDefault();
-
-            if (top.Customer is null)
+            if (store.Orders.Count == 0)
             {
                 throw new KeyNotFoundException("No orders found to determine top spending customer");
             }
 
-            return Task.FromResult(mapper.Map<TopCustomerDto>(top));
+            var top = store.Orders
+                .GroupBy(o => o.Customer)
+                .Select(g => (Customer: g.Key, TotalSpent: g.Sum(o => o.TotalAmount)))
+                .MaxBy(x => x.TotalSpent);
+
+            return mapper.Map<TopCustomerDto>(top);
         }
     }
 }

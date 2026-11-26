@@ -16,20 +16,20 @@ public interface IApplicationService<TDto, TCreateUpdateDto, TKey>
     /// </summary>
     /// <param name="dto">Данные для создания сущности.</param>
     /// <returns>Созданное DTO сущности.</returns>
-    public Task<TDto> Create(TCreateUpdateDto dto);
+    public TDto Create(TCreateUpdateDto dto);
 
     /// <summary>
     /// Возвращает сущность по идентификатору.
     /// </summary>
     /// <param name="id">Идентификатор сущности.</param>
     /// <returns>Найденное DTO сущности.</returns>
-    public Task<TDto> Get(TKey id);
+    public TDto Get(TKey id);
 
     /// <summary>
     /// Возвращает все сущности.
     /// </summary>
     /// <returns>Список DTO всех сущностей.</returns>
-    public Task<IReadOnlyList<TDto>> GetAll();
+    public IReadOnlyList<TDto> GetAll();
 
     /// <summary>
     /// Обновляет существующую сущность и возвращает её обновлённое представление.
@@ -37,12 +37,11 @@ public interface IApplicationService<TDto, TCreateUpdateDto, TKey>
     /// <param name="id">Идентификатор обновляемой сущности.</param>
     /// <param name="dto">Новые данные сущности.</param>
     /// <returns>Обновлённое DTO сущности.</returns>
-    public Task<TDto> Update(TKey id, TCreateUpdateDto dto);
+    public TDto Update(TKey id, TCreateUpdateDto dto);
 
     /// <summary>
     /// Удаляет сущность по идентификатору.
     /// </summary>
     /// <param name="id">Идентификатор удаляемой сущности.</param>
-    /// <returns>Задача, представляющая асинхронную операцию удаления.</returns>
-    public Task Delete(TKey id);
+    public void Delete(TKey id);
 }

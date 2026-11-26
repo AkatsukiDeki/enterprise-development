@@ -11,8 +11,8 @@ namespace FoodDelivery.Application.Contracts.Customers;
 /// <param name="PhoneNumber">Контактный номер телефона.</param>
 /// <param name="DeliveryAddress">Адрес доставки.</param>
 public sealed record CustomerCreateUpdateDto(
-    [Required] [MinLength(1)] string LastName,
-    [Required] [MinLength(1)] string FirstName,
+    [Required] string LastName,
+    [Required] string FirstName,
     string? Patronymic,
-    [Required] [MinLength(1)] string PhoneNumber,
-    [Required] [MinLength(1)] string DeliveryAddress);
+    [Required] string PhoneNumber,
+    [Required] string DeliveryAddress);
